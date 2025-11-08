@@ -91,6 +91,19 @@
      <string>update track</string>
     </property>
    </widget>
+   <widget class="QCheckBox" name="checkBox">
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>30</y>
+      <width>111</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>remember me</string>
+    </property>
+   </widget>
   </widget>
  </widget>
  <resources/>

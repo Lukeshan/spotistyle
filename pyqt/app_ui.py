@@ -37,6 +37,9 @@ class Ui_MainWindow(object):
         self.updateButton_2 = QtWidgets.QPushButton(parent=self.centralwidget)
         self.updateButton_2.setGeometry(QtCore.QRect(10, 110, 181, 51))
         self.updateButton_2.setObjectName("updateButton_2")
+        self.checkBox = QtWidgets.QCheckBox(parent=self.centralwidget)
+        self.checkBox.setGeometry(QtCore.QRect(200, 30, 111, 20))
+        self.checkBox.setObjectName("checkBox")
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
@@ -50,3 +53,4 @@ class Ui_MainWindow(object):
         self.bgColorButton.setText(_translate("MainWindow", "change bg color"))
         self.albumArtLabel.setText(_translate("MainWindow", "album art"))
         self.updateButton_2.setText(_translate("MainWindow", "update track"))
+        self.checkBox.setText(_translate("MainWindow", "remember me"))

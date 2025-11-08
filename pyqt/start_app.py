@@ -6,9 +6,8 @@ from io import BytesIO
 from PyQt6.QtWidgets import QApplication, QMainWindow
 from PyQt6.QtCore import QPropertyAnimation, pyqtProperty, Qt, QTimer
 from PyQt6.QtGui import QPalette, QColor, QPixmap
-from PIL import Image, ImageFilter
+from PIL import Image
 import numpy as np
-import cv2
 
 from app_ui import Ui_MainWindow  # your generated UI file
 
@@ -47,49 +46,14 @@ class MainWindow(QMainWindow):
     bg_color = pyqtProperty(QColor, fget=get_bg_color, fset=set_bg_color)
 
 
-    def get_dominant_rgb(self, image_url, crop_margin=0.15, blur_radius=50, min_saturation=50):
-        # Load and crop image
+    def get_dominant_rgb(self,image_url):
         response = requests.get(image_url)
         img = Image.open(BytesIO(response.content)).convert("RGB")
-        w, h = img.size
-        margin_w, margin_h = int(w * crop_margin), int(h * crop_margin)
-        img = img.crop((margin_w, margin_h, w - margin_w, h - margin_h))
         img = img.resize((200, 200))
-
-        # Convert to NumPy and OpenCV formats
         pixels = np.array(img)
-        img_cv = cv2.cvtColor(pixels, cv2.COLOR_RGB2BGR)
-
-        # Saliency detection
-        saliency = cv2.saliency.StaticSaliencySpectralResidual_create()
-        (success, saliencyMap) = saliency.computeSaliency(img_cv)
-        saliencyMap = (saliencyMap * 255).astype(np.uint8)
-
-        # Edge detection
-        gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Sobel(gray, cv2.CV_64F, 1, 1, ksize=5)
-        edge_map = np.absolute(edges).astype(np.uint8)
-
-        # Combine saliency and edge maps
-        combined_weight = cv2.addWeighted(saliencyMap, 0.6, edge_map, 0.4, 0)
-        combined_weight = combined_weight.flatten()
-
-        # Flatten pixels and apply weights
-        flat_pixels = pixels.reshape(-1, 3)
-        hsv = cv2.cvtColor(flat_pixels.reshape(-1, 1, 3).astype(np.uint8), cv2.COLOR_RGB2HSV).reshape(-1, 3)
-        mask = hsv[:, 1] >= min_saturation
-        filtered_pixels = flat_pixels[mask]
-        filtered_weights = combined_weight[mask]
-
-        # Fallback if too few pixels remain
-        if len(filtered_pixels) < 10:
-            filtered_pixels = flat_pixels
-            filtered_weights = combined_weight
-
-        # Weighted average
-        weighted_avg = np.average(filtered_pixels, axis=0, weights=filtered_weights)
-        r, g, b = map(int, weighted_avg)
-        return r, g, b
+        avg = pixels.mean(axis=(0, 1))
+        r, g, b = map(int, avg)
+        return r,g,b
 
     def animate_color(self, r=0,b=255,g=0):
         self.anim = QPropertyAnimation(self, b"bg_color")
