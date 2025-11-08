@@ -34,6 +34,9 @@ class Ui_MainWindow(object):
         self.albumArtLabel = QtWidgets.QLabel(parent=self.centralwidget)
         self.albumArtLabel.setGeometry(QtCore.QRect(30, 450, 240, 240))
         self.albumArtLabel.setObjectName("albumArtLabel")
+        self.updateButton_2 = QtWidgets.QPushButton(parent=self.centralwidget)
+        self.updateButton_2.setGeometry(QtCore.QRect(10, 110, 181, 51))
+        self.updateButton_2.setObjectName("updateButton_2")
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
@@ -46,3 +49,4 @@ class Ui_MainWindow(object):
         self.songDetailsLabel.setText(_translate("MainWindow", "current song"))
         self.bgColorButton.setText(_translate("MainWindow", "change bg color"))
         self.albumArtLabel.setText(_translate("MainWindow", "album art"))
+        self.updateButton_2.setText(_translate("MainWindow", "update track"))

@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from spotipy.oauth2 import SpotifyOAuth
 from spotipy import Spotify
@@ -12,7 +13,7 @@ app = FastAPI()
 # Allow frontend and Qt app to access backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # You can restrict this later
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -22,7 +23,7 @@ app.add_middleware(
 sp_oauth = SpotifyOAuth(
     client_id=os.getenv("SPOTIFY_CLIENT_ID"),
     client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
-    redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI"),
+    redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI"),  # e.g. http://localhost:8000/callback
     scope="user-read-playback-state user-modify-playback-state user-read-currently-playing"
 )
 
@@ -32,7 +33,7 @@ user_tokens = {}
 @app.get("/login")
 def login():
     auth_url = sp_oauth.get_authorize_url()
-    return {"url": auth_url}
+    return {"auth_url": auth_url}
 
 @app.get("/callback")
 def callback(code: str):
@@ -42,7 +43,7 @@ def callback(code: str):
         refresh_token = token_info["refresh_token"]
         user_tokens["access_token"] = access_token
         user_tokens["refresh_token"] = refresh_token
-        return {"access_token": access_token}
+        return FileResponse("callback.html")  # Adjust path if needed
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

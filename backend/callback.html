@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Spotify Auth Complete</title>
+  <script>
+    window.onload = () => {
+      // Try to close the tab
+      window.open('', '_self');
+      window.close();
+
+      // Fallback message
+      setTimeout(() => {
+        document.body.innerHTML = "<h2>Login complete. You can close this tab.</h2>";
+      }, 1000);
+    };
+  </script>
+</head>
+<body>
+  <h2>Authenticating with Spotify...</h2>
+</body>
+</html>

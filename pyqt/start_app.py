@@ -1,11 +1,8 @@
 import sys
 import webbrowser
 import requests
-from io import BytesIO
-
-from PIL import Image
-from PyQt6.QtWidgets import QApplication, QMainWindow, QInputDialog
-from PyQt6.QtCore import QPropertyAnimation, pyqtProperty, Qt
+from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt6.QtCore import QPropertyAnimation, pyqtProperty, Qt, QTimer
 from PyQt6.QtGui import QPalette, QColor, QPixmap
 from app_ui import Ui_MainWindow  # your generated UI file
 
@@ -17,11 +14,13 @@ class MainWindow(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
-        self._bg_color = QColor("white")
+        self._bg_color = QColor("blue")
         self.setAutoFillBackground(True)
         self.update_bg()
 
         self.access_token = None
+        self.poll_timer = QTimer()
+        self.poll_timer.timeout.connect(self.poll_for_token)
 
         self.ui.loginButton.clicked.connect(self.login)
         self.ui.bgColorButton.clicked.connect(self.animate_color)
@@ -42,46 +41,36 @@ class MainWindow(QMainWindow):
 
     def animate_color(self):
         self.anim = QPropertyAnimation(self, b"bg_color")
-        self.anim.setDuration(1000)  # 1 second
+        self.anim.setDuration(1000)
         self.anim.setStartValue(self._bg_color)
-        self.anim.setEndValue(QColor(225,122,122))  # target color
+        self.anim.setEndValue(QColor(225,122,122))
         self.anim.start()
 
     def login(self):
-        # Step 1: Get Spotify login URL from backend
         try:
             response = requests.get(f"{BACKEND_URL}/login")
-            print(response.json())
-            login_url = response.json()["url"]
-            webbrowser.open(login_url)
+            auth_url = response.json()["auth_url"]
+            webbrowser.open(auth_url)
             self.ui.songDetailsLabel.setText("Login in browser...")
+            self.poll_timer.start(2000)  # Poll every 2 seconds
         except Exception as e:
             self.ui.songDetailsLabel.setText(f"Login failed: {e}")
-            return
 
-        # Step 2: Wait for user to complete login and paste code
-        code, ok = QInputDialog.getText(self, "Spotify Login", "Paste the code from the URL:")
-        if not ok or not code:
-            self.ui.songDetailsLabel.setText("Login cancelled.")
-            return
-
-        # Step 3: Exchange code for access token
+    def poll_for_token(self):
         try:
-            token_response = requests.get(f"{BACKEND_URL}/callback", params={"code": code})
-            self.access_token = token_response.json()["access_token"]
+            response = requests.get(f"{BACKEND_URL}/track")
+            if response.status_code == 401:
+                return  # Still not authenticated
+            self.poll_timer.stop()
+            self.access_token = response.json().get("access_token")
             self.ui.songDetailsLabel.setText("Login successful!")
             self.get_current_track()
         except Exception as e:
-            self.ui.songDetailsLabel.setText(f"Token exchange failed: {e}")
+            self.ui.songDetailsLabel.setText(f"Polling error: {e}")
 
     def get_current_track(self):
-        if not self.access_token:
-            self.ui.songDetailsLabel.setText("Not authenticated.")
-            return
-
         try:
-            headers = {"Authorization": f"Bearer {self.access_token}"}
-            response = requests.get(f"{BACKEND_URL}/track", headers=headers)
+            response = requests.get(f"{BACKEND_URL}/track")
             data = response.json()
             track = data.get("name", "Unknown")
             artist = data.get("artist", "Unknown")
