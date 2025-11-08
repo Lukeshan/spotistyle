@@ -26,7 +26,7 @@ class Ui_MainWindow(object):
         self.loginButton.setGeometry(QtCore.QRect(10, 10, 181, 51))
         self.loginButton.setObjectName("loginButton")
         self.songDetailsLabel = QtWidgets.QLabel(parent=self.centralwidget)
-        self.songDetailsLabel.setGeometry(QtCore.QRect(320, 30, 641, 111))
+        self.songDetailsLabel.setGeometry(QtCore.QRect(300, 580, 1351, 111))
         self.songDetailsLabel.setObjectName("songDetailsLabel")
         self.bgColorButton = QtWidgets.QPushButton(parent=self.centralwidget)
         self.bgColorButton.setGeometry(QtCore.QRect(10, 60, 181, 51))

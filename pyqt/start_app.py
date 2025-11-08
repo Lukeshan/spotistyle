@@ -4,8 +4,8 @@ import requests
 from io import BytesIO
 
 from PyQt6.QtWidgets import QApplication, QMainWindow
-from PyQt6.QtCore import QPropertyAnimation, pyqtProperty, Qt, QTimer
-from PyQt6.QtGui import QPalette, QColor, QPixmap
+from PyQt6.QtCore import QPropertyAnimation, pyqtProperty, Qt, QTimer, QEvent
+from PyQt6.QtGui import QPalette, QColor, QPixmap, QFontDatabase, QFont
 from PIL import Image
 import numpy as np
 
@@ -18,6 +18,21 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+
+        font_id = QFontDatabase.addApplicationFont("font.otf")  # or "MyFont.otf"
+        font_family = QFontDatabase.applicationFontFamilies(font_id)
+        app.setFont(QFont(font_family, 10))  # 10 is the default size
+
+        self.ui.songDetailsLabel.setStyleSheet("""
+            QLabel {
+                background-color: transparent;
+                color: rgba(255, 255, 255, 204);  /* 204 = 0.8 * 255 */
+            }
+        """)
+
+
+
+        self.ui.songDetailsLabel.setFont(QFont(font_family, 54))
 
         self._bg_color = QColor("blue")
         self.setAutoFillBackground(True)

@@ -42,9 +42,9 @@
    <widget class="QLabel" name="songDetailsLabel">
     <property name="geometry">
      <rect>
-      <x>320</x>
-      <y>30</y>
-      <width>641</width>
+      <x>300</x>
+      <y>580</y>
+      <width>1351</width>
       <height>111</height>
      </rect>
     </property>
