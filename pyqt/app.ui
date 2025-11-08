@@ -65,6 +65,19 @@
      <string>change bg color</string>
     </property>
    </widget>
+   <widget class="QLabel" name="albumArtLabel">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>450</y>
+      <width>240</width>
+      <height>240</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>album art</string>
+    </property>
+   </widget>
   </widget>
  </widget>
  <resources/>

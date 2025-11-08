@@ -1,9 +1,12 @@
 import sys
 import webbrowser
 import requests
+from io import BytesIO
+
+from PIL import Image
 from PyQt6.QtWidgets import QApplication, QMainWindow, QInputDialog
 from PyQt6.QtCore import QPropertyAnimation, pyqtProperty, Qt
-from PyQt6.QtGui import QPalette, QColor
+from PyQt6.QtGui import QPalette, QColor, QPixmap
 from app_ui import Ui_MainWindow  # your generated UI file
 
 BACKEND_URL = "http://localhost:8000"
@@ -48,31 +51,32 @@ class MainWindow(QMainWindow):
         # Step 1: Get Spotify login URL from backend
         try:
             response = requests.get(f"{BACKEND_URL}/login")
+            print(response.json())
             login_url = response.json()["url"]
             webbrowser.open(login_url)
-            self.ui.label.setText("Login in browser...")
+            self.ui.songDetailsLabel.setText("Login in browser...")
         except Exception as e:
-            self.ui.label.setText(f"Login failed: {e}")
+            self.ui.songDetailsLabel.setText(f"Login failed: {e}")
             return
 
         # Step 2: Wait for user to complete login and paste code
         code, ok = QInputDialog.getText(self, "Spotify Login", "Paste the code from the URL:")
         if not ok or not code:
-            self.ui.label.setText("Login cancelled.")
+            self.ui.songDetailsLabel.setText("Login cancelled.")
             return
 
         # Step 3: Exchange code for access token
         try:
             token_response = requests.get(f"{BACKEND_URL}/callback", params={"code": code})
             self.access_token = token_response.json()["access_token"]
-            self.ui.label.setText("Login successful!")
+            self.ui.songDetailsLabel.setText("Login successful!")
             self.get_current_track()
         except Exception as e:
-            self.ui.label.setText(f"Token exchange failed: {e}")
+            self.ui.songDetailsLabel.setText(f"Token exchange failed: {e}")
 
     def get_current_track(self):
         if not self.access_token:
-            self.ui.label.setText("Not authenticated.")
+            self.ui.songDetailsLabel.setText("Not authenticated.")
             return
 
         try:
@@ -81,9 +85,18 @@ class MainWindow(QMainWindow):
             data = response.json()
             track = data.get("name", "Unknown")
             artist = data.get("artist", "Unknown")
-            self.ui.label.setText(f"{track} — {artist}")
+            image_url = data.get("image")
+
+            self.ui.songDetailsLabel.setText(f"{track} — {artist}")
+
+            if image_url:
+                img_data = requests.get(image_url).content
+                pixmap = QPixmap()
+                pixmap.loadFromData(img_data)
+                scaled = pixmap.scaled(300, 300, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                self.ui.albumArtLabel.setPixmap(scaled)
         except Exception as e:
-            self.ui.label.setText(f"Error fetching track: {e}")
+            self.ui.songDetailsLabel.setText(f"Error fetching track: {e}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
