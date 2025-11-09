@@ -24,20 +24,26 @@ class MainWindow(QMainWindow):
         font_family = QFontDatabase.applicationFontFamilies(font_id)
         app.setFont(QFont(font_family, 10))  # 10 is the default size
 
-        self.ui.songDetailsLabel.setStyleSheet("""
+        self.ui.songTitleLabel.setFont(QFont(font_family, 48))
+        self.ui.songArtistLabel.setFont(QFont(font_family, 36))
+        self.ui.songTitleLabel.setStyleSheet("""
+            QLabel {
+                background-color: transparent;
+                color: rgba(255, 255, 255, 200);
+            }
+        """)
+        self.ui.songArtistLabel.setStyleSheet("""
             QLabel {
                 background-color: transparent;
                 color: rgba(255, 255, 255, 180);
             }
         """)
 
-
-
-        self.ui.songDetailsLabel.setFont(QFont(font_family, 32))
-
         self._bg_color = QColor("blue")
         self.setAutoFillBackground(True)
         self.update_bg()
+
+        self.playback = True
 
         self.access_token = None
         self.poll_timer = QTimer()
@@ -46,9 +52,10 @@ class MainWindow(QMainWindow):
         self.track_timer = QTimer()
         self.track_timer.timeout.connect(self.get_current_track)
 
-        self.ui.loginButton.clicked.connect(self.login)
-        self.ui.bgColorButton.clicked.connect(self.animate_color)
-        self.ui.updateButton_2.clicked.connect(self.get_current_track)
+        self.ui.playButton.setText("Login")
+        self.ui.playButton.clicked.connect(self.login)
+        self.ui.nextButton.clicked.connect(self.skipSong)
+        self.ui.prevButton.clicked.connect(self.rewindSong)
 
     def update_bg(self):
         palette = self.palette()
@@ -63,6 +70,25 @@ class MainWindow(QMainWindow):
         self.update_bg()
 
     bg_color = pyqtProperty(QColor, fget=get_bg_color, fset=set_bg_color)
+
+    def togglePlayback(self):
+        if self.playback:
+            req = requests.post(f"{BACKEND_URL}/pause")
+            self.ui.playButton.setText("Play")
+            self.playback = False
+        else:
+            req = requests.post(f"{BACKEND_URL}/play")
+            self.ui.playButton.setText("Pause")
+            self.playback = True
+
+    def skipSong(self):
+        req = requests.post(f"{BACKEND_URL}/next")
+        self.get_current_track()
+    
+    def rewindSong(self):
+        req = requests.post(f"{BACKEND_URL}/previous")
+        self.get_current_track()
+
 
 
     def get_dominant_rgb(self, url, n_colors = 5):
@@ -100,10 +126,10 @@ class MainWindow(QMainWindow):
             response = requests.get(f"{BACKEND_URL}/login")
             auth_url = response.json()["auth_url"]
             webbrowser.open(auth_url)
-            self.ui.songDetailsLabel.setText("Login in browser...")
+            self.ui.songTitleLabel.setText("Login in browser...")
             self.poll_timer.start(1250)  # Poll every 2 seconds
         except Exception as e:
-            self.ui.songDetailsLabel.setText(f"Login failed: {e}")
+            self.ui.songTitleLabel.setText(f"Login failed: {e}")
 
     def poll_for_token(self):
         try:
@@ -112,11 +138,17 @@ class MainWindow(QMainWindow):
                 return  # Still not authenticated
             self.poll_timer.stop()
             self.access_token = response.json().get("access_token")
-            self.ui.songDetailsLabel.setText("Login successful!")
+            self.ui.songTitleLabel.setText("Login successful!")
+            self.ui.playButton.setText("Pause")
+            self.ui.playButton.clicked.disconnect()
+            self.ui.playButton.clicked.connect(self.togglePlayback)
+            self.activateWindow()
+            self.raise_()
+            self.showFullScreen()
             self.get_current_track()
-            self.track_timer.start(10000) 
+            self.track_timer.start(10000)
         except Exception as e:
-            self.ui.songDetailsLabel.setText(f"Polling error: {e}")
+            self.ui.songTitleLabel.setText(f"Polling error: {e}")
 
     def get_current_track(self):
         try:
@@ -125,12 +157,13 @@ class MainWindow(QMainWindow):
             track = data.get("name", "Unknown")
             artist = data.get("artist", "Unknown")
             image_url = data.get("image")
-            new_track = True if self.ui.songDetailsLabel.text() != f"{track} — {artist}" else False
+            new_track = (self.ui.songTitleLabel.text() != track) and (self.ui.songArtistLabel.text() != artist)
 
             if not new_track:
                 return
 
-            self.ui.songDetailsLabel.setText(f"{track} — {artist}")
+            self.ui.songTitleLabel.setText(track)
+            self.ui.songArtistLabel.setText(artist)
 
             if image_url:
                 img_data = requests.get(image_url).content
@@ -138,12 +171,12 @@ class MainWindow(QMainWindow):
                 pixmap.loadFromData(img_data)
                 scaled = pixmap.scaled(self.ui.albumArtLabel.width(), self.ui.albumArtLabel.height(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
                 self.ui.albumArtLabel.setPixmap(scaled)
-                r,g,b = self.get_dominant_rgb(url=image_url, n_colors=16)
-                d_f = 0.96 # Darkening Factor
+                r,g,b = self.get_dominant_rgb(url=image_url, n_colors=9)
+                d_f = 0.95 # Darkening Factor
                 r = round(r*d_f); g = round(g*d_f); b = round(b*d_f)
                 self.animate_color(r=r,g=g,b=b)
         except Exception as e:
-            self.ui.songDetailsLabel.setText(f"Error fetching track: {e}")
+            self.ui.songTitleLabel.setText(f"Error fetching track: {e}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
