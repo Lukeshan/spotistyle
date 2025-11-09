@@ -8,6 +8,7 @@ from PyQt6.QtCore import QPropertyAnimation, pyqtProperty, Qt, QTimer, QEvent
 from PyQt6.QtGui import QPalette, QColor, QPixmap, QFontDatabase, QFont
 from PIL import Image
 import numpy as np
+import cv2
 
 from app_ui import Ui_MainWindow  # your generated UI file
 
@@ -26,13 +27,13 @@ class MainWindow(QMainWindow):
         self.ui.songDetailsLabel.setStyleSheet("""
             QLabel {
                 background-color: transparent;
-                color: rgba(255, 255, 255, 204);  /* 204 = 0.8 * 255 */
+                color: rgba(255, 255, 255, 180);
             }
         """)
 
 
 
-        self.ui.songDetailsLabel.setFont(QFont(font_family, 54))
+        self.ui.songDetailsLabel.setFont(QFont(font_family, 32))
 
         self._bg_color = QColor("blue")
         self.setAutoFillBackground(True)
@@ -41,6 +42,9 @@ class MainWindow(QMainWindow):
         self.access_token = None
         self.poll_timer = QTimer()
         self.poll_timer.timeout.connect(self.poll_for_token)
+
+        self.track_timer = QTimer()
+        self.track_timer.timeout.connect(self.get_current_track)
 
         self.ui.loginButton.clicked.connect(self.login)
         self.ui.bgColorButton.clicked.connect(self.animate_color)
@@ -61,14 +65,28 @@ class MainWindow(QMainWindow):
     bg_color = pyqtProperty(QColor, fget=get_bg_color, fset=set_bg_color)
 
 
-    def get_dominant_rgb(self,image_url):
-        response = requests.get(image_url)
+    def get_dominant_rgb(self, url, n_colors = 5):
+
+        response = requests.get(url)
         img = Image.open(BytesIO(response.content)).convert("RGB")
         img = img.resize((200, 200))
-        pixels = np.array(img)
-        avg = pixels.mean(axis=(0, 1))
-        r, g, b = map(int, avg)
-        return r,g,b
+        pixels = np.array(img).reshape((-1, 3)).astype(np.float32)
+
+        # Apply KMeans clustering
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+        _, labels, centers = cv2.kmeans(pixels, n_colors, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+
+        # Reconstruct quantized image
+        centers = np.uint8(centers)
+        quantized = centers[labels.flatten()]
+        quantized_image = quantized.reshape((200, 200, 3))
+
+        # Find dominant color
+        label_counts = np.bincount(labels.flatten())
+        dominant_index = np.argmax(label_counts)
+        dominant_color = centers[dominant_index]
+        r, g, b = map(int, dominant_color)
+        return r, g, b
 
     def animate_color(self, r=0,b=255,g=0):
         self.anim = QPropertyAnimation(self, b"bg_color")
@@ -83,7 +101,7 @@ class MainWindow(QMainWindow):
             auth_url = response.json()["auth_url"]
             webbrowser.open(auth_url)
             self.ui.songDetailsLabel.setText("Login in browser...")
-            self.poll_timer.start(2000)  # Poll every 2 seconds
+            self.poll_timer.start(1250)  # Poll every 2 seconds
         except Exception as e:
             self.ui.songDetailsLabel.setText(f"Login failed: {e}")
 
@@ -96,6 +114,7 @@ class MainWindow(QMainWindow):
             self.access_token = response.json().get("access_token")
             self.ui.songDetailsLabel.setText("Login successful!")
             self.get_current_track()
+            self.track_timer.start(10000) 
         except Exception as e:
             self.ui.songDetailsLabel.setText(f"Polling error: {e}")
 
@@ -106,6 +125,10 @@ class MainWindow(QMainWindow):
             track = data.get("name", "Unknown")
             artist = data.get("artist", "Unknown")
             image_url = data.get("image")
+            new_track = True if self.ui.songDetailsLabel.text() != f"{track} — {artist}" else False
+
+            if not new_track:
+                return
 
             self.ui.songDetailsLabel.setText(f"{track} — {artist}")
 
@@ -115,8 +138,10 @@ class MainWindow(QMainWindow):
                 pixmap.loadFromData(img_data)
                 scaled = pixmap.scaled(self.ui.albumArtLabel.width(), self.ui.albumArtLabel.height(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
                 self.ui.albumArtLabel.setPixmap(scaled)
-                r,g,b = self.get_dominant_rgb(image_url)
-                self.animate_color(r,g,b)
+                r,g,b = self.get_dominant_rgb(url=image_url, n_colors=16)
+                d_f = 0.96 # Darkening Factor
+                r = round(r*d_f); g = round(g*d_f); b = round(b*d_f)
+                self.animate_color(r=r,g=g,b=b)
         except Exception as e:
             self.ui.songDetailsLabel.setText(f"Error fetching track: {e}")
 
